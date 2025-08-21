@@ -5,8 +5,6 @@ app = Flask(__name__)
 
 # Load model
 model = joblib.load("best_model.pkl")
-# Không cần label encoder nếu bạn không dùng
-le = None
 
 def health_advice(label, bmi):
     if "Under" in label:
@@ -22,85 +20,48 @@ TEMPLATE = """
     <meta charset="utf-8">
     <title>BMI Classifier</title>
     <style>
-      body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background: linear-gradient(135deg, #00c6ff, #0072ff);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        min-height: 100vh;
-        margin: 0;
-      }
-      .container {
-        background: #fff;
-        padding: 30px;
-        border-radius: 15px;
-        box-shadow: 0 8px 25px rgba(0,0,0,0.2);
-        width: 400px;
-        text-align: center;
-      }
-      h2 {
-        margin-bottom: 20px;
-        color: #0072ff;
-      }
-      label {
-        display: block;
-        margin: 10px 0 5px;
-        font-weight: bold;
-        text-align: left;
-      }
-      input {
-        width: 100%;
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 8px;
-        outline: none;
-        font-size: 14px;
-      }
-      input:focus {
-        border-color: #0072ff;
-      }
-      button {
-        margin-top: 20px;
-        width: 100%;
-        padding: 12px;
-        border: none;
-        border-radius: 8px;
-        background: #0072ff;
-        color: white;
-        font-size: 16px;
-        font-weight: bold;
-        cursor: pointer;
-        transition: 0.3s;
-      }
-      button:hover {
-        background: #0056cc;
-      }
-      .result {
-        margin-top: 25px;
-        padding: 15px;
-        border-radius: 10px;
-        background: #f1f7ff;
-        text-align: left;
-      }
-      .result p {
-        margin: 8px 0;
-      }
-      .advice {
-        color: #333;
-        font-style: italic;
-      }
+      body {font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #00c6ff, #0072ff);
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; margin: 0;}
+      .container {background: #fff; padding: 30px; border-radius: 15px;
+                  box-shadow: 0 8px 25px rgba(0,0,0,0.2); width: 400px; text-align: center;}
+      h2 {margin-bottom: 20px; color: #0072ff;}
+      label {display: block; margin: 10px 0 5px; font-weight: bold; text-align: left;}
+      input {width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px;
+             outline: none; font-size: 14px;}
+      input:focus {border-color: #0072ff;}
+      button {margin-top: 20px; width: 100%; padding: 12px; border: none; border-radius: 8px;
+              background: #0072ff; color: white; font-size: 16px; font-weight: bold;
+              cursor: pointer; transition: 0.3s;}
+      button:hover {background: #0056cc;}
+      .result {margin-top: 25px; padding: 15px; border-radius: 10px; background: #f1f7ff;
+               text-align: left;}
+      .result p {margin: 8px 0;}
+      .advice {color: #333; font-style: italic;}
     </style>
   </head>
   <body>
     <div class="container">
       <h2>BMI Classifier</h2>
       <form method="post">
+        <label>Height (m):</label>
+        <input name="height" type="number" step="any" required>
+
         <label>Weight (kg):</label>
         <input name="weight" type="number" step="any" required>
 
-        <label>Height (m):</label>
-        <input name="height" type="number" step="any" required>
+        <label>Age:</label>
+        <input name="age" type="number" required>
+
+        <label>Blood Pressure:</label>
+        <input name="blood_pressure" type="number" step="any" required>
+
+        <label>Diabetes Pedigree Function:</label>
+        <input name="dpf" type="number" step="any" required>
+
+        <label>Glucose:</label>
+        <input name="glucose" type="number" step="any" required>
 
         <button type="submit">Predict</button>
       </form>
@@ -121,14 +82,21 @@ def index():
     result = None
     if request.method == "POST":
         try:
-            weight = float(request.form.get("weight", 0))
             height = float(request.form.get("height", 0))
+            weight = float(request.form.get("weight", 0))
             if height <= 0:
                 raise ValueError("Height phải lớn hơn 0")
 
             bmi = weight / (height ** 2)
+            age = float(request.form.get("age", 0))
+            blood_pressure = float(request.form.get("blood_pressure", 0))
+            dpf = float(request.form.get("dpf", 0))
+            glucose = float(request.form.get("glucose", 0))
 
-            X_new = pd.DataFrame([[height, weight]], columns=["Height", "Weight"])
+            X_new = pd.DataFrame([[
+                age, bmi, blood_pressure, dpf, glucose
+            ]], columns=["Age", "BMI", "BloodPressure", "DiabetesPedigreeFunction", "Glucose"])
+
             label = str(model.predict(X_new)[0])
 
             result = {
@@ -136,6 +104,7 @@ def index():
                 "label": label,
                 "advice": health_advice(label, bmi)
             }
+
         except Exception as e:
             result = {"bmi": "-", "label": "Error", "advice": f"Lỗi: {e}"}
 
