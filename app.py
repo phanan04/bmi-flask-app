@@ -1,12 +1,12 @@
-# Cell 6: Flask web app (fixed)
 from flask import Flask, request, render_template_string
 import joblib, pandas as pd
 
 app = Flask(__name__)
 
-# Load model và encoder
+# Load model
 model = joblib.load("best_model.pkl")
-le = joblib.load("label_encoder.pkl")
+# Không cần label encoder nếu bạn không dùng
+le = None
 
 def health_advice(label, bmi):
     if "Under" in label:
@@ -120,26 +120,26 @@ TEMPLATE = """
 def index():
     result = None
     if request.method == "POST":
-        weight = float(request.form["weight"])
-        height = float(request.form["height"])
-        print("DEBUG - Weight:", weight, "Height:", height)  # Debug
+        try:
+            weight = float(request.form.get("weight", 0))
+            height = float(request.form.get("height", 0))
+            if height <= 0:
+                raise ValueError("Height phải lớn hơn 0")
 
-        bmi = weight / (height ** 2)
-        print("DEBUG - BMI:", bmi)  # Debug
+            bmi = weight / (height ** 2)
 
-        # Predict
-        X_new = pd.DataFrame([[height, weight]], columns=["Height", "Weight"])
-        pred = model.predict(X_new)[0]
-        label = pred
+            X_new = pd.DataFrame([[height, weight]], columns=["Height", "Weight"])
+            label = str(model.predict(X_new)[0])
 
-        result = {
-            "bmi": f"{bmi:.2f}",
-            "label": label,
-            "advice": health_advice(label, bmi)
-        }
+            result = {
+                "bmi": f"{bmi:.2f}",
+                "label": label,
+                "advice": health_advice(label, bmi)
+            }
+        except Exception as e:
+            result = {"bmi": "-", "label": "Error", "advice": f"Lỗi: {e}"}
 
     return render_template_string(TEMPLATE, result=result)
 
 if __name__ == "__main__":
     app.run(debug=True, use_reloader=False)
-
