@@ -1,9 +1,10 @@
+# Cell 6: Flask web app (without label_encoder)
 from flask import Flask, request, render_template_string
 import joblib, pandas as pd
 
 app = Flask(__name__)
 
-# Load model
+# Load model trực tiếp (model output là chuỗi nhãn)
 model = joblib.load("best_model.pkl")
 
 def health_advice(label, bmi):
@@ -81,32 +82,22 @@ TEMPLATE = """
 def index():
     result = None
     if request.method == "POST":
-        try:
-            height = float(request.form.get("height", 0))
-            weight = float(request.form.get("weight", 0))
-            if height <= 0:
-                raise ValueError("Height phải lớn hơn 0")
+        weight = float(request.form["weight"])
+        height = float(request.form["height"])
+        print("DEBUG - Weight:", weight, "Height:", height)  # Debug
 
-            bmi = weight / (height ** 2)
-            age = float(request.form.get("age", 0))
-            blood_pressure = float(request.form.get("blood_pressure", 0))
-            dpf = float(request.form.get("dpf", 0))
-            glucose = float(request.form.get("glucose", 0))
+        bmi = weight / (height ** 2)
+        print("DEBUG - BMI:", bmi)  # Debug
 
-            X_new = pd.DataFrame([[
-                age, bmi, blood_pressure, dpf, glucose
-            ]], columns=["Age", "BMI", "BloodPressure", "DiabetesPedigreeFunction", "Glucose"])
+        # Predict trực tiếp nhãn chuỗi
+        X_new = pd.DataFrame([[height, weight]], columns=["Height", "Weight"])
+        label = model.predict(X_new)[0]  # output trực tiếp là chuỗi
 
-            label = str(model.predict(X_new)[0])
-
-            result = {
-                "bmi": f"{bmi:.2f}",
-                "label": label,
-                "advice": health_advice(label, bmi)
-            }
-
-        except Exception as e:
-            result = {"bmi": "-", "label": "Error", "advice": f"Lỗi: {e}"}
+        result = {
+            "bmi": f"{bmi:.2f}",
+            "label": label,
+            "advice": health_advice(label, bmi)
+        }
 
     return render_template_string(TEMPLATE, result=result)
 
